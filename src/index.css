@@ -1,113 +1,77 @@
-@import "tailwindcss";
+ @import "tailwindcss";
 
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* ─── Tokens de diseño (handoff) ──────────────────────────── */
+  @theme {
+    /* Color */
+    --color-canvas: #0f1116; /* fondo del documento */
+    --color-app: #14161c; /* fondo de la app */
+    --color-surface: #191c24; /* paneles, tarjetas */
+    --color-ink: #eceae4; /* texto principal */
+    --color-ink-muted: #a6a6af; /* texto secundario */
+    --color-line: #262a34; /* bordes y separadores */
+    --color-accent: #2a3f73; /* rellenos: botones, chips */
+    --color-accent-lift: #93a9e4; /* texto/líneas/progreso sobre oscuro (4.5:1) */
+    --color-paper: #f2ede4; /* página del PDF */
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+    /* Tipografía */
+    --font-serif: "EB Garamond", Georgia, "Times New Roman", serif;
+    --font-sans: "IBM Plex Sans", system-ui, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
+    /* Curvas de movimiento */
+    --ease-shared: cubic-bezier(0.2, 0.8, 0.2, 1); /* portada → lector */
+    --ease-flip: cubic-bezier(0.35, 0.05, 0.2, 1); /* volteo de hoja */
+    --ease-page: cubic-bezier(0.32, 0.72, 0, 1); /* página móvil */
   }
-}
 
-@media (prefers-color-scheme: dark) {
+  /* ─── Base ────────────────────────────────────────────────── */
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    color-scheme: dark;
+    --pad-container: 28px;
   }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  @media (max-width: 640px) {
+    :root {
+      --pad-container: 20px;
+    }
   }
-}
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+  html,
+  body,
+  #root {
+    min-height: 100vh;
   }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+  body {
+    margin: 0;
+    background: var(--color-app);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 24px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
-}
-p {
-  margin: 0;
-}
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
+  h1,
+  h2,
+  h3 {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-weight: 500;
+    color: var(--color-ink);
+  }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
-}
+  /* prefers-reduced-motion: baseline. Los volteos/slides se afinan
+     en los pasos del lector (fundido de 160 ms). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
