@@ -18,6 +18,7 @@ function App() {
           Paso 3 . tokens y tipografia
         </p>
       </header>
+      
 
       <main className="px-[var(--pad-container)] py-8">
         <h2 className="font-serif text-[44px] leading-[46px] tracking-[0.015em]">
