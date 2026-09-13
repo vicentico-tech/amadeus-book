@@ -1,0 +1,63 @@
+import { dbPromise } from "./db";
+import type { Book } from "../types/book";
+
+export async function addBook(file: File): Promise<Book> {
+  const db = await dbPromise;
+
+  const book: Book = {
+    id: crypto.randomUUID(),
+    title: file.name.replace(/\.pdf$/i, ""),
+    filename: file.name,
+    fileSize: file.size,
+    pageCount: 0,
+    addedAt: Date.now(),
+    currentPage: 1,
+    progress: 0,
+  };
+
+  const tx = db.transaction(["books", "files"], "readwrite");
+  await Promise.all([
+    tx.objectStore("books").add(book),
+    tx.objectStore("files").add({ id: book.id, blob: file }),
+    tx.done,
+  ]);
+
+  return book;
+}
+
+export async function listBooks(): Promise<Book[]> {
+  const db = await dbPromise;
+  const books = await db.getAllFromIndex("books", "by-addedAt");
+  return books.reverse();
+}
+
+export async function getBookFile(id: string): Promise<Blob | undefined> {
+  const db = await dbPromise;
+  const record = await db.get("files", id);
+  return record?.blob;
+}
+
+export async function updateProgress(
+  id: string,
+  currentPage: number,
+): Promise<void> {
+  const db = await dbPromise;
+  const book = await db.get("books", id);
+  if (!book) return;
+
+  book.currentPage = currentPage;
+  book.progress = book.pageCount > 0 ? currentPage / book.pageCount : 0;
+  book.lastOpenedAt = Date.now();
+
+  await db.put("books", book);
+}
+
+export async function deleteBook(id: string): Promise<void> {
+  const db = await dbPromise;
+  const tx = db.transaction(["books", "files"], "readwrite");
+  await Promise.all([
+    tx.objectStore("books").delete(id),
+    tx.objectStore("files").delete(id),
+    tx.done,
+  ]);
+}
