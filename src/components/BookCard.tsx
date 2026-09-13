@@ -1,8 +1,8 @@
 import type { Book } from "../types/book";
 
-export function BookCard({ book }: { book: Book }) {
+export function BookCard({ book, onOpen }: { book: Book; onOpen: (book: Book) => void }) {
     return (
-        <div className="w-36">
+        <button onClick={() => onOpen(book)} className="w-36">
             <div className="aspect-[3/4] overflow-hidden rounded-sm border border-line bg-paper">
                 {book.coverThumbnail ? (
                     <img
@@ -29,6 +29,6 @@ export function BookCard({ book }: { book: Book }) {
 
                 </div>
             </div>
-        </div>
+        </button>
     )
 }

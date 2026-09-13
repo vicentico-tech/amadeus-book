@@ -4,7 +4,7 @@ import type { Book } from "../types/book";
 import { BookCard } from "./BookCard";
 
 
-export function Library() {
+export function Library({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
     const [books, setBooks] = useState<Book[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -54,7 +54,7 @@ export function Library() {
                 ) : (
                     <div className="flex flex-wrap gap-6">
                         {books.map((book) => (
-                            <BookCard key={book.id} book={book} />
+                            <BookCard key={book.id} book={book} onOpen={onOpenBook} />
                         ))}
 
                     </div>
