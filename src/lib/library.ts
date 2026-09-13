@@ -1,15 +1,39 @@
 import { dbPromise } from "./db";
 import type { Book } from "../types/book";
+import * as pdfjs from "pdfjs-dist";
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.js", import.meta.url).toString();
 
 export async function addBook(file: File): Promise<Book> {
   const db = await dbPromise;
+
+  async function  extractPdfInfo(file: File): Promise<{ pageCount: number, coverThumbnail: string }> {
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 0.5 });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d")!;
+    
+    await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+
+    return {
+      pageCount: pdf.numPages,
+      coverThumbnail: canvas.toDataURL("image/png")
+    }
+  }
+
+  const { pageCount, coverThumbnail } = await extractPdfInfo(file);
 
   const book: Book = {
     id: crypto.randomUUID(),
     title: file.name.replace(/\.pdf$/i, ""),
     filename: file.name,
     fileSize: file.size,
-    pageCount: 0,
+    pageCount,
+    coverThumbnail,
     addedAt: Date.now(),
     currentPage: 1,
     progress: 0,
