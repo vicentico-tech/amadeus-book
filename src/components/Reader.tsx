@@ -58,7 +58,15 @@ export function Reader({ book, onBack }: { book: Book; onBack: () => void }) {
             >
               {file ? (
                 <Document file={file}>
-                  <Page pageNumber={pageNumber} width={560} />
+                  <Page
+                    pageNumber={pageNumber}
+                    width={560}
+                    loading={
+                      <div className="flex aspect-[2/3] w-full items-center justify-center border border-dashed border-line bg-surface font-mono text-[11px] uppercase tracking-[0.1em] text-ink-muted">
+                        Renderizando
+                      </div>
+                    }
+                  />
                 </Document>
               ) : (
                 <p className="text-ink-muted">Cargando...</p>

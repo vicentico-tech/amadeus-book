@@ -1,13 +1,14 @@
 import { dbPromise } from "./db";
 import type { Book } from "../types/book";
 import * as pdfjs from "pdfjs-dist";
+import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.js", import.meta.url).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
-export async function addBook(file: File): Promise<Book> {
+export async function addBook(file: File, onProgress?: (fraction: number) => void,): Promise<Book> {
   const db = await dbPromise;
-
-  async function  extractPdfInfo(file: File): Promise<{ pageCount: number, coverThumbnail: string }> {
+  onProgress?.(0.1);
+  async function extractPdfInfo(file: File): Promise<{ pageCount: number, coverThumbnail: string }> {
     const buffer = await file.arrayBuffer();
     const pdf = await pdfjs.getDocument({ data: buffer }).promise;
     const page = await pdf.getPage(1);
@@ -16,7 +17,7 @@ export async function addBook(file: File): Promise<Book> {
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     const ctx = canvas.getContext("2d")!;
-    
+
     await page.render({ canvasContext: ctx, viewport, canvas }).promise;
 
     return {
@@ -26,6 +27,7 @@ export async function addBook(file: File): Promise<Book> {
   }
 
   const { pageCount, coverThumbnail } = await extractPdfInfo(file);
+  onProgress?.(0.7);
 
   const book: Book = {
     id: crypto.randomUUID(),
@@ -45,7 +47,7 @@ export async function addBook(file: File): Promise<Book> {
     tx.objectStore("files").add({ id: book.id, blob: file }),
     tx.done,
   ]);
-
+  onProgress?.(1);
   return book;
 }
 
