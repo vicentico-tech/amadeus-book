@@ -1,9 +1,10 @@
 import type { Book } from "../types/book";
+import { motion } from "framer-motion";
 
 export function BookCard({ book, onOpen }: { book: Book; onOpen: (book: Book) => void }) {
     return (
         <button onClick={() => onOpen(book)} className="w-36">
-            <div className="aspect-[3/4] overflow-hidden rounded-sm border border-line bg-paper">
+            <motion.div layoutId={`cover-${book.id}`} className="aspect-[3/4] overflow-hidden rounded-sm border border-line bg-paper">
                 {book.coverThumbnail ? (
                     <img
                         src={book.coverThumbnail}
@@ -11,7 +12,7 @@ export function BookCard({ book, onOpen }: { book: Book; onOpen: (book: Book) =>
                         className="w-full h-full object-cover"
                     />
                 ) : null}
-            </div>
+            </motion.div>
 
             <h3 className="mt-2 truncate font-serif text-sm leading-5">
                 {book.title}
