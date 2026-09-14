@@ -1,5 +1,5 @@
 import { dbPromise } from "./db";
-import type { Book } from "../types/book";
+import type { Book, Bookmark } from "../types/book";
 import * as pdfjs from "pdfjs-dist";
 import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -75,6 +75,15 @@ export async function updateProgress(
   book.progress = book.pageCount > 0 ? currentPage / book.pageCount : 0;
   book.lastOpenedAt = Date.now();
 
+  await db.put("books", book);
+}
+
+export async function addBookmark(id: string, bookmark: Bookmark): Promise<void> {
+  const db = await dbPromise;
+  const book = await db.get("books", id);
+  if (!book) return;
+
+  book.bookmarks = [...(book.bookmarks ?? []), bookmark];
   await db.put("books", book);
 }
 
