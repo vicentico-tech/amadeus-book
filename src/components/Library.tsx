@@ -2,10 +2,12 @@ import { useEffect, useState, useRef } from "react";
 import { addBook, listBooks } from "../lib/library";
 import type { Book } from "../types/book";
 import { BookCard } from "./BookCard";
+import { BookDetailPanel } from "./BookDetailPanel";
 
 
 export function Library({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
     type UploadItem = { name: string; progress: number; status: "en cola" | "subiendo" | "ok" };
+    const [detailBook, setDetailBook] = useState<Book | null>(null);
     const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
     const [query, setQuery] = useState("");
     const [filter, setFilter] = useState<"todos" | "leyendo" | "terminados">("todos");
@@ -92,7 +94,7 @@ export function Library({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
             {uploadQueue.length > 0 && (
                 <div className="mx-[var(--pad-container)] mt-4 rounded-sm border border-dashed border-accent-lift/40 bg-surface p-4">
                     <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.1em] text-accent-lift">
-                        Subiendo {uploadQueue.filter((u) => u.status === "ok").length + 1} de {uploadQueue.length}
+                        Subiendo {Math.min(uploadQueue.filter((u) => u.status === "ok").length + 1, uploadQueue.length)} de {uploadQueue.length}
                     </p>
                     <ul className="flex flex-col gap-2">
                         {uploadQueue.map((item) => (
@@ -151,11 +153,25 @@ export function Library({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
                 ) : (
                     <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 sm:gap-[20px] lg:grid-cols-4 xl:grid-cols-6 xl:gap-[26px]">
                         {filteredBooks.map((book) => (
-                            <BookCard key={book.id} book={book} onOpen={onOpenBook} />
+                            <BookCard key={book.id} book={book} onOpen={onOpenBook} onShowDetail={setDetailBook} />
                         ))}
                     </div>
                 )}
             </main>
+            {detailBook && (
+                <BookDetailPanel
+                    book={detailBook}
+                    onClose={() => setDetailBook(null)}
+                    onContinue={(book) => {
+                        setDetailBook(null);
+                        onOpenBook(book);
+                    }}
+                    onRestart={(book) => {
+                        setDetailBook(null);
+                        onOpenBook({ ...book, currentPage: 1 });
+                    }}
+                />
+            )}
         </div>
     )
 }
