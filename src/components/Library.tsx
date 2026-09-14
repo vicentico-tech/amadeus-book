@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { addBook, listBooks } from "../lib/library";
+import { addBook, deleteBook, listBooks } from "../lib/library";
 import type { Book } from "../types/book";
 import { BookCard } from "./BookCard";
 import { BookDetailPanel } from "./BookDetailPanel";
@@ -14,6 +14,9 @@ export function Library({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
     const [mobileTab, setMobileTab] = useState<"biblioteca" | "leyendo" | "ajustes">("biblioteca");
     const [books, setBooks] = useState<Book[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
+    const [showAddDialog, setShowAddDialog] = useState(false);
+    const [pendingPdf, setPendingPdf] = useState<File | null>(null);
+    const [pendingCover, setPendingCover] = useState<File | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     function selectMobileTab(tab: "biblioteca" | "leyendo" | "ajustes") {
@@ -39,7 +42,7 @@ export function Library({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
 
         for (let i = 0; i < fileArray.length; i++) {
             setUploadQueue((q) => q.map((item, idx) => (idx === i ? { ...item, status: "subiendo" } : item)));
-            await addBook(fileArray[i], (fraction) => {
+            await addBook(fileArray[i], null, (fraction) => {
                 setUploadQueue((q) => q.map((item, idx) => (idx === i ? { ...item, progress: fraction } : item)));
             });
             setUploadQueue((q) => q.map((item, idx) => (idx === i ? { ...item, status: "ok", progress: 1 } : item)));
@@ -49,6 +52,37 @@ export function Library({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
         setLoading(false);
         setUploadQueue([]);
         if (inputRef.current) inputRef.current.value = "";
+    }
+
+    async function handleAddSingleBook() {
+        if (!pendingPdf) return;
+        const file = pendingPdf;
+        const cover = pendingCover;
+        setLoading(true);
+        setUploadQueue([{ name: file.name, progress: 0, status: "subiendo" }]);
+
+        await addBook(file, cover, (fraction) => {
+            setUploadQueue((q) => q.map((item) => ({ ...item, progress: fraction })));
+        });
+
+        await refresh();
+        setLoading(false);
+        setUploadQueue([]);
+        setShowAddDialog(false);
+        setPendingPdf(null);
+        setPendingCover(null);
+    }
+
+    function closeAddDialog() {
+        setShowAddDialog(false);
+        setPendingPdf(null);
+        setPendingCover(null);
+    }
+
+    async function handleDeleteBook(book: Book) {
+        await deleteBook(book.id);
+        setDetailBook(null);
+        await refresh();
     }
 
     const filteredBooks = books.filter((book) => {
@@ -64,17 +98,12 @@ export function Library({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
         <div className="min-h-screen bg-app text-ink pb-16 sm:pb-0">
             <header className="flex items-center justify-between border-b border-line px-[var(--pad-container)] py-5">
                 <h1 className="font-serif text-2xl leading-7">Biblioteca PDF</h1>
-                <label className="cursor-pointer rounded-sm bg-accent px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em]">
+                <button
+                    onClick={() => setShowAddDialog(true)}
+                    className="rounded-sm bg-accent px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em]"
+                >
                     {loading ? "Cargando..." : "Agregar PDF"}
-                    <input
-                        type="file"
-                        ref={inputRef}
-                        accept="application/pdf"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => handleFiles(e.target.files)}
-                    />
-                </label>
+                </button>
             </header>
             {mobileTab === "ajustes" ? (
                 <main className="px-[var(--pad-container)] py-16 text-center">
@@ -155,12 +184,19 @@ export function Library({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
                                     Elegir archivos
                                     <input
                                         type="file"
+                                        ref={inputRef}
                                         accept="application/pdf"
                                         multiple
                                         className="hidden"
                                         onChange={(e) => handleFiles(e.target.files)}
                                     />
                                 </label>
+                                <button
+                                    onClick={() => setShowAddDialog(true)}
+                                    className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-muted underline"
+                                >
+                                    o agrega uno con portada personalizada
+                                </button>
                             </div>
                         ) : filteredBooks.length === 0 ? (
                             <p className="text-ink-muted">Sin resultados para tu búsqueda.</p>
@@ -204,7 +240,55 @@ export function Library({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
                         setDetailBook(null);
                         onOpenBook({ ...book, currentPage: 1 });
                     }}
+                    onDelete={handleDeleteBook}
                 />
+            )}
+            {showAddDialog && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-canvas/80" onClick={closeAddDialog} />
+                    <div className="relative flex w-full max-w-sm flex-col gap-4 rounded-sm border border-line bg-app p-6">
+                        <h3 className="font-serif text-lg">Agregar libro</h3>
+
+                        <label className="flex flex-col gap-1 text-sm text-ink-muted">
+                            Archivo PDF
+                            <input
+                                type="file"
+                                accept="application/pdf"
+                                onChange={(e) => setPendingPdf(e.target.files?.[0] ?? null)}
+                                className="text-ink file:mr-3 file:cursor-pointer file:rounded-sm file:border-0 file:bg-surface file:px-3 file:py-1.5 file:font-mono file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-ink"
+                            />
+                        </label>
+
+                        <label className="flex flex-col gap-1 text-sm text-ink-muted">
+                            Portada (JPEG, opcional)
+                            <input
+                                type="file"
+                                accept="image/jpeg"
+                                onChange={(e) => setPendingCover(e.target.files?.[0] ?? null)}
+                                className="text-ink file:mr-3 file:cursor-pointer file:rounded-sm file:border-0 file:bg-surface file:px-3 file:py-1.5 file:font-mono file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-ink"
+                            />
+                        </label>
+                        <p className="text-[11px] text-ink-muted">
+                            Si no eliges portada, se genera automáticamente desde la primera página del PDF.
+                        </p>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={closeAddDialog}
+                                className="rounded-sm bg-surface px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em]"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleAddSingleBook}
+                                disabled={!pendingPdf || loading}
+                                className="rounded-sm bg-accent px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] disabled:opacity-40"
+                            >
+                                {loading ? "Agregando..." : "Agregar"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     )

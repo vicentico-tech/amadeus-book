@@ -1,32 +1,49 @@
 import { dbPromise } from "./db";
 import type { Book, Bookmark } from "../types/book";
 import * as pdfjs from "pdfjs-dist";
+import type { PDFDocumentProxy } from "pdfjs-dist";
 import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
-export async function addBook(file: File, onProgress?: (fraction: number) => void,): Promise<Book> {
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function renderCoverThumbnail(pdf: PDFDocumentProxy): Promise<string> {
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({ scale: 0.5 });
+  const canvas = document.createElement("canvas");
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext("2d")!;
+
+  await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+
+  return canvas.toDataURL("image/png");
+}
+
+export async function addBook(
+  file: File,
+  coverFile?: File | null,
+  onProgress?: (fraction: number) => void,
+): Promise<Book> {
   const db = await dbPromise;
   onProgress?.(0.1);
-  async function extractPdfInfo(file: File): Promise<{ pageCount: number, coverThumbnail: string }> {
-    const buffer = await file.arrayBuffer();
-    const pdf = await pdfjs.getDocument({ data: buffer }).promise;
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 0.5 });
-    const canvas = document.createElement("canvas");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext("2d")!;
 
-    await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+  const pageCount = pdf.numPages;
+  onProgress?.(0.4);
 
-    return {
-      pageCount: pdf.numPages,
-      coverThumbnail: canvas.toDataURL("image/png")
-    }
-  }
-
-  const { pageCount, coverThumbnail } = await extractPdfInfo(file);
+  const coverThumbnail = coverFile
+    ? await readFileAsDataUrl(coverFile)
+    : await renderCoverThumbnail(pdf);
   onProgress?.(0.7);
 
   const book: Book = {

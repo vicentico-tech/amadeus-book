@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Book } from "../types/book";
 
 function formatSize(bytes: number): string {
@@ -9,13 +10,16 @@ export function BookDetailPanel({
     onClose,
     onContinue,
     onRestart,
+    onDelete,
 }: {
     book: Book;
     onClose: () => void;
     onContinue: (book: Book) => void;
     onRestart: (book: Book) => void;
+    onDelete: (book: Book) => void;
 }) {
     const percent = Math.round(book.progress * 100);
+    const [confirmingDelete, setConfirmingDelete] = useState(false);
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -87,6 +91,35 @@ export function BookDetailPanel({
                         </ul>
                     ) : (
                         <p className="text-sm text-ink-muted">Sin marcadores todavía.</p>
+                    )}
+                </div>
+
+                <div className="mt-auto border-t border-line pt-4">
+                    {confirmingDelete ? (
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm text-ink-muted">¿Eliminar este libro definitivamente?</p>
+                            <div className="flex shrink-0 gap-2">
+                                <button
+                                    onClick={() => setConfirmingDelete(false)}
+                                    className="rounded-sm bg-surface px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em]"
+                                >
+                                    No
+                                </button>
+                                <button
+                                    onClick={() => onDelete(book)}
+                                    className="rounded-sm bg-red-900 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-ink"
+                                >
+                                    Sí, eliminar
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setConfirmingDelete(true)}
+                            className="font-mono text-[11px] uppercase tracking-[0.1em] text-red-400"
+                        >
+                            Eliminar libro
+                        </button>
                     )}
                 </div>
             </aside>
