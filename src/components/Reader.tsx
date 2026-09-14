@@ -5,11 +5,10 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import { getBookFile, updateProgress } from "../lib/library";
 import type { Book } from "../types/book";
 import { motion, AnimatePresence } from "framer-motion";
+import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.js",
-  import.meta.url,
-).toString();
+
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 export function Reader({ book, onBack }: { book: Book; onBack: () => void }) {
   const [file, setFile] = useState<Blob | null>(null);
