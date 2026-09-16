@@ -24,7 +24,7 @@ export async function syncStaticBooks(): Promise<void> {
 
   const allBooks = await db.getAll("books");
   for (const book of allBooks) {
-    if (!("pdfUrl" in book)) {
+    if (!(book as Partial<Book>).pdfUrl) {
       await db.delete("books", book.id);
     }
   }
