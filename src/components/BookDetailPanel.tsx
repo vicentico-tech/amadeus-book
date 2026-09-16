@@ -1,10 +1,6 @@
 import { useState } from "react";
 import type { Book } from "../types/book";
 
-function formatSize(bytes: number): string {
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export function BookDetailPanel({
     book,
     onClose,
@@ -34,8 +30,8 @@ export function BookDetailPanel({
                 </button>
 
                 <div className="aspect-[2/3] w-40 overflow-hidden rounded-sm border border-line bg-paper">
-                    {book.coverThumbnail ? (
-                        <img src={book.coverThumbnail} alt={book.title} className="h-full w-full object-cover" />
+                    {book.coverUrl ? (
+                        <img src={book.coverUrl} alt={book.title} className="h-full w-full object-cover" />
                     ) : null}
                 </div>
 
@@ -46,9 +42,6 @@ export function BookDetailPanel({
                     <div className="mt-3 flex gap-2">
                         <span className="rounded-full bg-surface px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-muted">
                             {book.pageCount} pág.
-                        </span>
-                        <span className="rounded-full bg-surface px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-muted">
-                            {formatSize(book.fileSize)}
                         </span>
                     </div>
                 </div>

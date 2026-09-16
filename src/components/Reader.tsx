@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
-import { getBookFile, updateProgress, addBookmark } from "../lib/library";
+import { updateProgress, addBookmark } from "../lib/library";
 import type { Book } from "../types/book";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -41,7 +41,6 @@ async function extractToc(pdf: PdfDocumentLike): Promise<TocEntry[]> {
 }
 
 export function Reader({ book, onBack }: { book: Book; onBack: () => void }) {
-  const [file, setFile] = useState<Blob | null>(null);
   const [pageNumber, setPageNumber] = useState(book.currentPage);
   const [direction, setDirection] = useState(0);
   const [isSpread, setIsSpread] = useState(() => window.matchMedia("(min-width: 1024px)").matches);
@@ -52,10 +51,6 @@ export function Reader({ book, onBack }: { book: Book; onBack: () => void }) {
   const prefersReducedMotion = useReducedMotion();
   const hideTimeoutRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    getBookFile(book.id).then((blob) => setFile(blob ?? null));
-  }, [book.id]);
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1024px)");
@@ -155,32 +150,41 @@ export function Reader({ book, onBack }: { book: Book; onBack: () => void }) {
           layoutId={`cover-${book.id}`}
           className={`flex w-full gap-px overflow-hidden rounded-sm ${isSpread ? "max-w-[1120px]" : "max-w-[560px]"}`}
         >
-          {file ? (
-            <Document
-              file={file}
-              onLoadSuccess={(pdf) => {
-                extractToc(pdf as unknown as PdfDocumentLike).then(setToc);
-              }}
-            >
-              <AnimatePresence mode="wait" custom={direction}>
-                <motion.div
-                  key={pageNumber}
-                  custom={direction}
-                  initial={{ opacity: 0, x: prefersReducedMotion ? 0 : direction >= 0 ? 40 : -40 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: prefersReducedMotion ? 0 : direction >= 0 ? -40 : 40 }}
-                  transition={{ duration: prefersReducedMotion ? 0.16 : 0.25, ease: "easeOut" }}
-                  drag="x"
-                  dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.6}
-                  onDragEnd={(_, info) => {
-                    if (info.offset.x < -80) goTo(pageNumber + step);
-                    else if (info.offset.x > 80) goTo(pageNumber - step);
-                  }}
-                  className="flex gap-px"
-                >
+          <Document
+            file={book.pdfUrl}
+            onLoadSuccess={(pdf) => {
+              extractToc(pdf as unknown as PdfDocumentLike).then(setToc);
+            }}
+          >
+            <AnimatePresence mode="wait" custom={direction}>
+              <motion.div
+                key={pageNumber}
+                custom={direction}
+                initial={{ opacity: 0, x: prefersReducedMotion ? 0 : direction >= 0 ? 40 : -40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: prefersReducedMotion ? 0 : direction >= 0 ? -40 : 40 }}
+                transition={{ duration: prefersReducedMotion ? 0.16 : 0.25, ease: "easeOut" }}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.6}
+                onDragEnd={(_, info) => {
+                  if (info.offset.x < -80) goTo(pageNumber + step);
+                  else if (info.offset.x > 80) goTo(pageNumber - step);
+                }}
+                className="flex gap-px"
+              >
+                <Page
+                  pageNumber={pageNumber}
+                  width={pageWidth}
+                  loading={
+                    <div className="flex aspect-[2/3] w-full items-center justify-center border border-dashed border-line bg-surface font-mono text-[11px] uppercase tracking-[0.1em] text-ink-muted">
+                      Renderizando
+                    </div>
+                  }
+                />
+                {showSecondPage && (
                   <Page
-                    pageNumber={pageNumber}
+                    pageNumber={pageNumber + 1}
                     width={pageWidth}
                     loading={
                       <div className="flex aspect-[2/3] w-full items-center justify-center border border-dashed border-line bg-surface font-mono text-[11px] uppercase tracking-[0.1em] text-ink-muted">
@@ -188,23 +192,10 @@ export function Reader({ book, onBack }: { book: Book; onBack: () => void }) {
                       </div>
                     }
                   />
-                  {showSecondPage && (
-                    <Page
-                      pageNumber={pageNumber + 1}
-                      width={pageWidth}
-                      loading={
-                        <div className="flex aspect-[2/3] w-full items-center justify-center border border-dashed border-line bg-surface font-mono text-[11px] uppercase tracking-[0.1em] text-ink-muted">
-                          Renderizando
-                        </div>
-                      }
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </Document>
-          ) : (
-            <p className="text-ink-muted">Cargando...</p>
-          )}
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </Document>
         </motion.div>
 
         <div

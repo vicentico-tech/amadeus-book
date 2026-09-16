@@ -1,83 +1,57 @@
 import { dbPromise } from "./db";
 import type { Book, Bookmark } from "../types/book";
-import * as pdfjs from "pdfjs-dist";
-import type { PDFDocumentProxy } from "pdfjs-dist";
-import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { STATIC_BOOKS } from "../data/books";
 
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+const REMOVED_KEY = "amadeus:removedBookIds";
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+function getRemovedIds(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(REMOVED_KEY) ?? "[]"));
+  } catch {
+    return new Set();
+  }
 }
 
-async function renderCoverThumbnail(pdf: PDFDocumentProxy): Promise<string> {
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 0.5 });
-  const canvas = document.createElement("canvas");
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  const ctx = canvas.getContext("2d")!;
-
-  await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-
-  return canvas.toDataURL("image/png");
+function markRemoved(id: string) {
+  const ids = getRemovedIds();
+  ids.add(id);
+  localStorage.setItem(REMOVED_KEY, JSON.stringify([...ids]));
 }
 
-export async function addBook(
-  file: File,
-  coverFile?: File | null,
-  onProgress?: (fraction: number) => void,
-): Promise<Book> {
+export async function syncStaticBooks(): Promise<void> {
   const db = await dbPromise;
-  onProgress?.(0.1);
+  const removed = getRemovedIds();
 
-  const buffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
-  const pageCount = pdf.numPages;
-  onProgress?.(0.4);
+  for (const entry of STATIC_BOOKS) {
+    if (removed.has(entry.id)) continue;
+    const existingBook = await db.get("books", entry.id);
 
-  const coverThumbnail = coverFile
-    ? await readFileAsDataUrl(coverFile)
-    : await renderCoverThumbnail(pdf);
-  onProgress?.(0.7);
+    if (existingBook) {
+      await db.put("books", {
+        ...existingBook,
+        title: entry.title,
+        author: entry.author,
+        pageCount: entry.pageCount,
+        pdfUrl: entry.pdfUrl,
+        coverUrl: entry.coverUrl,
+      });
+      continue;
+    }
 
-  const book: Book = {
-    id: crypto.randomUUID(),
-    title: file.name.replace(/\.pdf$/i, ""),
-    filename: file.name,
-    fileSize: file.size,
-    pageCount,
-    coverThumbnail,
-    addedAt: Date.now(),
-    currentPage: 1,
-    progress: 0,
-  };
-
-  const tx = db.transaction(["books", "files"], "readwrite");
-  await Promise.all([
-    tx.objectStore("books").add(book),
-    tx.objectStore("files").add({ id: book.id, blob: file }),
-    tx.done,
-  ]);
-  onProgress?.(1);
-  return book;
+    const book: Book = {
+      ...entry,
+      addedAt: Date.now(),
+      currentPage: 1,
+      progress: 0,
+    };
+    await db.put("books", book);
+  }
 }
 
 export async function listBooks(): Promise<Book[]> {
   const db = await dbPromise;
   const books = await db.getAllFromIndex("books", "by-addedAt");
   return books.reverse();
-}
-
-export async function getBookFile(id: string): Promise<Blob | undefined> {
-  const db = await dbPromise;
-  const record = await db.get("files", id);
-  return record?.blob;
 }
 
 export async function updateProgress(
@@ -106,10 +80,6 @@ export async function addBookmark(id: string, bookmark: Bookmark): Promise<void>
 
 export async function deleteBook(id: string): Promise<void> {
   const db = await dbPromise;
-  const tx = db.transaction(["books", "files"], "readwrite");
-  await Promise.all([
-    tx.objectStore("books").delete(id),
-    tx.objectStore("files").delete(id),
-    tx.done,
-  ]);
+  markRemoved(id);
+  await db.delete("books", id);
 }

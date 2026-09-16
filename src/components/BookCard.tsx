@@ -22,9 +22,9 @@ export function BookCard({
         >
             <motion.div layoutId={`cover-${book.id}`} className="relative aspect-[2/3] overflow-hidden rounded-sm border border-line bg-paper shadow-[0_18px_40px_-16px_rgba(0,0,0,.9),0_8px_30px_-12px_rgba(147,169,228,.28)]">
                 <div className="absolute inset-y-0 left-0 w-1 bg-black/40" />
-                {book.coverThumbnail ? (
+                {book.coverUrl ? (
                     <img
-                        src={book.coverThumbnail}
+                        src={book.coverUrl}
                         alt={book.title}
                         className="w-full h-full object-cover"
                     />

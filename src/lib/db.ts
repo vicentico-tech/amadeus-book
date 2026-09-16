@@ -1,5 +1,5 @@
 import { openDB, type DBSchema } from 'idb';
-import type { Book, BookFile } from '../types/book';
+import type { Book } from '../types/book';
 
 interface AmadeusDB extends DBSchema {
     books: {
@@ -9,17 +9,17 @@ interface AmadeusDB extends DBSchema {
             "by-addedAt": number;
         }
     }
-    files: {
-        key: string;
-        value: BookFile;
-    }
-
 }
 
-export const dbPromise = openDB<AmadeusDB>('amadeus-db', 1, {
-    upgrade(db) {
-        const books = db.createObjectStore('books', { keyPath: 'id' });
-        books.createIndex('by-addedAt', 'addedAt');
-        db.createObjectStore('files', { keyPath: 'id' });
+export const dbPromise = openDB<AmadeusDB>('amadeus-db', 2, {
+    upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+            const books = db.createObjectStore('books', { keyPath: 'id' });
+            books.createIndex('by-addedAt', 'addedAt');
+        }
+        const rawDb = db as unknown as IDBDatabase;
+        if (oldVersion < 2 && rawDb.objectStoreNames.contains('files')) {
+            rawDb.deleteObjectStore('files');
+        }
     }
 });
