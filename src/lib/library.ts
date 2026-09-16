@@ -22,6 +22,13 @@ export async function syncStaticBooks(): Promise<void> {
   const db = await dbPromise;
   const removed = getRemovedIds();
 
+  const allBooks = await db.getAll("books");
+  for (const book of allBooks) {
+    if (!("pdfUrl" in book)) {
+      await db.delete("books", book.id);
+    }
+  }
+
   for (const entry of STATIC_BOOKS) {
     if (removed.has(entry.id)) continue;
     const existingBook = await db.get("books", entry.id);
